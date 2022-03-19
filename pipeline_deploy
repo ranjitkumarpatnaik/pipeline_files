@@ -1,0 +1,32 @@
+pipeline{
+    agent any
+    environment{
+        PATH = "/usr/share/maven/bin:$PATH"
+    }
+    stages{
+        stage("Git checkout"){
+            steps{
+                git credentialsId: 'github', url: 'https://github.com/ranjitkumarpatnaik/samplejava'
+            }
+        }
+        stage("Maven Build"){
+            steps{
+                sh "mvn clean package"
+                sh "mv target/*.war target/myapp.war"
+            }
+        }
+        stage("deploy-tomcat"){
+            steps{
+                sshagent(['tomcat-new']) {
+                sh '''
+                    scp -o StrictHostKeyChecking=no target/myapp.war vagrant@192.168.33.50/opt/tomcat/apache-tomcat-9.0.60/webapps/
+                    
+                    ssh vagrant@192.168.33.50 /opt/tomcat/apache-tomcat-9.0.60/bin/shutdown.sh
+                    
+                    ssh vagrant@192.168.33.50 /opt/tomcat/apache-tomcat-9.0.60/bin/startup.sh
+                '''
+                }
+            }
+        }
+    }
+}
